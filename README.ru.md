@@ -88,7 +88,8 @@
 | `addDocument(uri)` | Читает документ и режет под бюджет контекста | `val (text, truncated) = DocumentReader.truncate(raw.text, remaining)` |
 | `removeDocument(id)` | Удаляет документ из сессии | `chatRepository.removeDocument(sessionId, id)` |
 | `documentBudgetTokens()` | Бюджет токенов под документы | `DocumentReader.budgetTokens(...)` |
-| `sendMessage()` | Главный сценарий: выбор vision/text, генерация, сохранение, автоподсказки, TTS | `val useVision = imagePath != null && llmEngine.hasVision` |
+| `sendMessage()` | Главный сценарий: выбор vision/text, генерация, сохранение, автоподсказки; фрагменты TTS ставятся в очередь по знакам препинания | `val useVision = imagePath != null && llmEngine.hasVision` |
+| `lastTtsDelimiter(sb)` | Индекс последнего знака препинания в буфере TTS | `'.', '!', '?', ';', ':', ',', '…' -> return i` |
 | `attachMmprojToModel(model, uri)` | Импорт и привязка проектора | `llmEngine.importMmproj(uri).onSuccess { llmEngine.setModelMmproj(...) }` |
 | `downloadMmprojForModel(...)` | Скачивание проектора и привязка | `llmEngine.downloadMmprojFromUrl(url, name)` |
 | `removeMmprojFromModel(model)` | Снимает привязку проектора | `llmEngine.setModelMmproj(model.path, null)` |
@@ -180,7 +181,8 @@
 | `onResults` / `onPartialResults` | Результаты распознавания | `results?.getStringArrayList(RESULTS_RECOGNITION)` |
 | `TtsManager.initialize()` | Инициализация TTS | `TextToSpeech(context) { status -> ... }` |
 | `TtsManager.setLanguage(lang)` | Локаль ru/de/en | `"ru" -> Locale("ru", "RU")` |
-| `TtsManager.speak(text)` | Озвучка с очисткой markdown | `tts?.speak(cleaned, TextToSpeech.QUEUE_FLUSH, null, ...)` |
+| `TtsManager.speak(text)` | Озвучка полного текста (сбрасывает очередь) | `fun speak(text: String) = speakChunk(text, flush = true)` |
+| `TtsManager.speakChunk(text, flush)` | Потоковая озвучка: добавить фрагмент или сбросить очередь | `val mode = if (flush) TextToSpeech.QUEUE_FLUSH else TextToSpeech.QUEUE_ADD` |
 | `TtsManager.stop()/shutdown()` | Стоп/освобождение | `tts?.shutdown()` |
 
 ### 4.8 UI-экраны и компоненты
@@ -188,6 +190,7 @@
 | Функция | Что делает | Код |
 |---|---|---|
 | `ChatScreen(...)` | Чат: шапка с ОЗУ, список сообщений, ввод, чипы | `val ramFree by viewModel.ramFree.collectAsState()` |
+| Автоскролл чата | Во время стрима держит конец ответа, после готовности чипов прыгает к началу ответа | `listState.scrollToItem(index, overflow)` |
 | `takePhoto()` | Съёмка через `FileProvider` | `FileProvider.getUriForFile(appContext, "${appContext.packageName}.fileprovider", file)` |
 | `sendCurrent()` | Отправка + скрытие клавиатуры | `viewModel.sendMessage()` |
 | `MessageBubble(...)` | Пузырь сообщения (+картинка) | `val isUser = message.role == "user"` |
@@ -247,7 +250,7 @@
 | 10 | Подсказки-чипы (стрим, дедуп, язык-цель, фильтр языка) | ✅ готово | `buildSuggestionPrompt`, `suggestionMatchesLanguage` |
 | 11 | Чат с документами (txt/md/json/html/csv) | ✅ готово | `DocumentReader` |
 | 12 | STT (голосовой ввод) | ✅ готово | `SttManager` |
-| 13 | TTS (озвучка) | ✅ готово | `TtsManager` |
+| 13 | TTS (озвучка) | ✅ готово | `TtsManager` — потоковая, по фрагментам при появлении знаков препинания |
 | 14 | Настройки (temp, top_p, max tokens, ctx, threads, языки, темы, layout) | ✅ готово | `SettingsScreen` |
 | 15 | Локализация en/ru/de + 6 тем | ✅ готово | `Localization`, `AppTheme` |
 | 16 | Монитор ОЗУ + кнопка «Освободить ОЗУ» | ✅ готово | `refreshMemory`, `freeRam` |
@@ -267,6 +270,8 @@
 | 30 | Офлайн-STT (whisper) вместо системного | ⏳ не сделано | используется `SpeechRecognizer` |
 | 31 | Модель не грузится дважды / прогрев | ⏳ бэклог | `freeRam` выгружает модель |
 | 32 | Unit/UI-тесты и CI | ⏳ не сделано | тестов нет |
+| 33 | Потоковый TTS (озвучка фрагментов по мере генерации) | ✅ проверено | 8 запросов синтеза за один ответ |
+| 34 | Умный автоскролл (за концом, к началу после чипов) | ✅ готово | `LaunchedEffect` в `ChatScreen` |
 
 ---
 

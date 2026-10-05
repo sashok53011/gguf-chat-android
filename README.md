@@ -88,7 +88,8 @@ Data flow: UI → `ChatViewModel` → `LlmEngine.generate/generateVision` → JN
 | `addDocument(uri)` | Read a document and trim to the context budget | `val (text, truncated) = DocumentReader.truncate(raw.text, remaining)` |
 | `removeDocument(id)` | Remove a document from the session | `chatRepository.removeDocument(sessionId, id)` |
 | `documentBudgetTokens()` | Token budget for documents | `DocumentReader.budgetTokens(...)` |
-| `sendMessage()` | Main flow: choose vision/text, generate, save, autosuggest, TTS | `val useVision = imagePath != null && llmEngine.hasVision` |
+| `sendMessage()` | Main flow: choose vision/text, generate, save, autosuggest; enqueues TTS chunks as punctuation arrives | `val useVision = imagePath != null && llmEngine.hasVision` |
+| `lastTtsDelimiter(sb)` | Index of the last sentence/clause punctuation in the TTS buffer | `'.', '!', '?', ';', ':', ',', '…' -> return i` |
 | `attachMmprojToModel(model, uri)` | Import + bind a projector | `llmEngine.importMmproj(uri).onSuccess { llmEngine.setModelMmproj(...) }` |
 | `downloadMmprojForModel(...)` | Download a projector and bind it | `llmEngine.downloadMmprojFromUrl(url, name)` |
 | `removeMmprojFromModel(model)` | Unbind the projector | `llmEngine.setModelMmproj(model.path, null)` |
@@ -180,7 +181,8 @@ Data flow: UI → `ChatViewModel` → `LlmEngine.generate/generateVision` → JN
 | `onResults` / `onPartialResults` | Recognition results | `results?.getStringArrayList(RESULTS_RECOGNITION)` |
 | `TtsManager.initialize()` | TTS init | `TextToSpeech(context) { status -> ... }` |
 | `TtsManager.setLanguage(lang)` | Locale ru/de/en | `"ru" -> Locale("ru", "RU")` |
-| `TtsManager.speak(text)` | Speak with markdown cleanup | `tts?.speak(cleaned, TextToSpeech.QUEUE_FLUSH, null, ...)` |
+| `TtsManager.speak(text)` | Speak a full text (flushes the queue) | `fun speak(text: String) = speakChunk(text, flush = true)` |
+| `TtsManager.speakChunk(text, flush)` | Streaming speech: append the chunk or flush the queue | `val mode = if (flush) TextToSpeech.QUEUE_FLUSH else TextToSpeech.QUEUE_ADD` |
 | `TtsManager.stop()/shutdown()` | Stop/release | `tts?.shutdown()` |
 
 ### 4.8 UI screens & components
@@ -188,6 +190,7 @@ Data flow: UI → `ChatViewModel` → `LlmEngine.generate/generateVision` → JN
 | Function | What it does | Code |
 |---|---|---|
 | `ChatScreen(...)` | Chat: RAM header, message list, input, chips | `val ramFree by viewModel.ramFree.collectAsState()` |
+| Chat auto-scroll | Follows the streaming answer's END, then jumps to the answer's START once the suggestion chips are ready | `listState.scrollToItem(index, overflow)` |
 | `takePhoto()` | Capture via `FileProvider` | `FileProvider.getUriForFile(appContext, "${appContext.packageName}.fileprovider", file)` |
 | `sendCurrent()` | Send + hide keyboard | `viewModel.sendMessage()` |
 | `MessageBubble(...)` | Message bubble (+image) | `val isUser = message.role == "user"` |
@@ -247,7 +250,7 @@ Sampler (`make_sampler`): `llama_sampler_init_penalties(...)` → `llama_sampler
 | 10 | Suggestion chips (stream, dedup, target language, language filter) | ✅ done | `buildSuggestionPrompt`, `suggestionMatchesLanguage` |
 | 11 | Document-in-chat (txt/md/json/html/csv) | ✅ done | `DocumentReader` |
 | 12 | STT (voice input) | ✅ done | `SttManager` |
-| 13 | TTS (speech output) | ✅ done | `TtsManager` |
+| 13 | TTS (speech output) | ✅ done | `TtsManager` — streaming, sentence-by-sentence as punctuation arrives |
 | 14 | Settings (temp, top_p, max tokens, ctx, threads, languages, themes, layout) | ✅ done | `SettingsScreen` |
 | 15 | Localization en/ru/de + 6 themes | ✅ done | `Localization`, `AppTheme` |
 | 16 | RAM monitor + “Free RAM” button | ✅ done | `refreshMemory`, `freeRam` |
@@ -267,3 +270,5 @@ Sampler (`make_sampler`): `llama_sampler_init_penalties(...)` → `llama_sampler
 | 30 | Offline STT (whisper) instead of the system recognizer | ⏳ pending | uses `SpeechRecognizer` |
 | 31 | Keep model warm / no double load | ⏳ backlog | `freeRam` unloads the model |
 | 32 | Unit/UI tests and CI | ⏳ pending | none |
+| 33 | Streaming TTS (speak each clause as tokens arrive) | ✅ verified | 8 synthesis requests during one answer |
+| 34 | Smart chat auto-scroll (follow end, jump to start after chips) | ✅ done | `ChatScreen` LaunchedEffects |
