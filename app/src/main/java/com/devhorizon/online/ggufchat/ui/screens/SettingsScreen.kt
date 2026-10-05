@@ -10,6 +10,7 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ArrowBack
@@ -35,6 +36,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.text.input.KeyboardType
 import com.devhorizon.online.ggufchat.data.model.LlmSettings
 import com.devhorizon.online.ggufchat.ui.theme.Localization
 import com.devhorizon.online.ggufchat.ui.viewmodel.ChatViewModel
@@ -165,12 +167,22 @@ fun SettingsScreen(
                 onValueChange = { currentSettings = currentSettings.copy(maxTokens = it.roundToInt()) }
             )
 
-            SliderSetting(
-                label = l("context_size"),
-                value = currentSettings.contextLength.toFloat(),
-                range = 512f..8192f,
-                steps = 15,
-                onValueChange = { currentSettings = currentSettings.copy(contextLength = it.roundToInt()) }
+            // Context size: any value from 512 to 131072. The effective value is
+            // additionally clamped to the loaded model's maximum (see LlmEngine).
+            var ctxText by remember { mutableStateOf(currentSettings.contextLength.toString()) }
+            OutlinedTextField(
+                value = ctxText,
+                onValueChange = { input ->
+                    val digits = input.filter { it.isDigit() }.take(6)
+                    ctxText = digits
+                    digits.toIntOrNull()?.let { v ->
+                        currentSettings = currentSettings.copy(contextLength = v.coerceIn(512, 131072))
+                    }
+                },
+                label = { Text(l("context_size")) },
+                singleLine = true,
+                keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                modifier = Modifier.fillMaxWidth()
             )
 
             SliderSetting(

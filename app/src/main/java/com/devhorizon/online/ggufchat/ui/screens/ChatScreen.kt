@@ -131,6 +131,7 @@ fun ChatScreen(
     val modelState by viewModel.llmEngine.state.collectAsState()
     val mmprojReady by viewModel.llmEngine.mmprojLoaded.collectAsState()
     val mmprojName by viewModel.llmEngine.mmprojName.collectAsState()
+    val ctxSize by viewModel.llmEngine.contextSize.collectAsState()
     val isPreparingVision by viewModel.isPreparingVision.collectAsState()
     val modelName by viewModel.llmEngine.modelName.collectAsState()
     val progress by viewModel.llmEngine.progress.collectAsState()
@@ -613,8 +614,11 @@ fun ChatScreen(
                             } else if (modelState == ModelState.LOADED) {
                                 // Model status feedback: vision availability + projector name
                                 Text(
-                                    text = if (mmprojReady) "👁 ${l("vision_ready")} · $mmprojName"
-                                    else l("text_only"),
+                                    text = buildString {
+                                        if (mmprojReady) append("👁 ${l("vision_ready")} · $mmprojName")
+                                        else append(l("text_only"))
+                                        if (ctxSize > 0) append(" · $ctxSize ctx")
+                                    },
                                     style = MaterialTheme.typography.bodySmall,
                                     color = if (mmprojReady) MaterialTheme.colorScheme.primary
                                     else MaterialTheme.colorScheme.onSurfaceVariant,

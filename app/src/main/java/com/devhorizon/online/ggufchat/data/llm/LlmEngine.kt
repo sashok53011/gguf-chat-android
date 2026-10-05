@@ -32,6 +32,8 @@ class LlmEngine(private val context: Context) {
     private var handle: Long = -1L
     private var loadedModelPath: String = ""
     private var loadedArchitecture: String = "Unknown"
+    private val _contextSize = MutableStateFlow(0)
+    val contextSize: StateFlow<Int> = _contextSize.asStateFlow()
 
     private val _state = MutableStateFlow(ModelState.UNLOADED)
     val state: StateFlow<ModelState> = _state.asStateFlow()
@@ -40,6 +42,10 @@ class LlmEngine(private val context: Context) {
     private val _mmprojLoaded = MutableStateFlow(false)
     val mmprojLoaded: StateFlow<Boolean> = _mmprojLoaded.asStateFlow()
     val hasVision: Boolean get() = handle > 0 && _mmprojLoaded.value
+
+    /** Context length actually used by the loaded model (falls back to the setting). */
+    val effectiveContextLength: Int
+        get() = if (_contextSize.value > 0) _contextSize.value else _settings.value.contextLength
 
     // Name of the currently loaded projector (for status display)
     private val _mmprojName = MutableStateFlow("")
@@ -482,10 +488,15 @@ class LlmEngine(private val context: Context) {
                 _progressMessage.value = l("loading_memory")
 
                 val s = _settings.value
+                // Apply the requested context size but never exceed what the model was
+                // trained for (its GGUF context length). This lets every model use its
+                // own maximum while keeping the setting global.
+                val modelMaxCtx = modelInfo.contextLength.coerceAtLeast(512)
+                val effectiveCtx = s.contextLength.coerceIn(512, modelMaxCtx)
                 val newHandle = LocalLlmNative.nativeLoadModel(
                     modelInfo.path,
                     s.threads,
-                    s.contextLength,
+                    effectiveCtx,
                     object : LocalLlmNative.ProgressCallback {
                         override fun onProgress(progress: Float) {
                             _progress.value = 0.7f + progress * 0.3f
@@ -501,6 +512,7 @@ class LlmEngine(private val context: Context) {
 
                 handle = newHandle
                 loadedModelPath = modelInfo.path
+                _contextSize.value = effectiveCtx
                 _mmprojLoaded.value = false
                 val isVision = ModelCompatibility.isVisionArch(arch)
                 val requested = mmprojPath?.takeIf { it.isNotBlank() && File(it).exists() }
@@ -552,6 +564,7 @@ class LlmEngine(private val context: Context) {
         _progress.value = 0f
         _progressMessage.value = ""
         loadedArchitecture = "Unknown"
+        _contextSize.value = 0
     }
 
     /** Attach an mmproj projector to the currently loaded model (enables images). */

@@ -346,7 +346,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                 val raw = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
                     DocumentReader.read(getApplication<Application>(), uri)
                 }
-                val budget = DocumentReader.budgetTokens(llmEngine.settings.value.contextLength)
+                val budget = DocumentReader.budgetTokens(llmEngine.effectiveContextLength)
                 val used = session.documents.sumOf { DocumentReader.estimateTokens(it.text) }
                 val remaining = budget - used
                 if (remaining <= 10) {
@@ -392,7 +392,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun documentBudgetTokens(): Int =
-        DocumentReader.budgetTokens(llmEngine.settings.value.contextLength)
+        DocumentReader.budgetTokens(llmEngine.effectiveContextLength)
 
     private fun buildDocsBlock(docs: List<SessionDocument>): String? {
         if (docs.isEmpty()) return null

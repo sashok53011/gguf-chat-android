@@ -130,6 +130,7 @@
 | `importModel(uri)` | Копирует GGUF в `files/models` с прогрессом | `context.contentResolver.openInputStream(uri)` |
 | `downloadModelFromUrl(url)` | Скачивает с проверкой размера/валидности | `if (totalBytes > 0 && totalRead != totalBytes)` |
 | `loadModel(model, mmproj)` | Грузит модель, чистит RAM-гейт, привязывает vision-проектор | `val isVision = ModelCompatibility.isVisionArch(arch)` |
+| Эффективный ctx | Запрошенный ctx ограничивается максимумом модели и применяется при загрузке | `val effectiveCtx = s.contextLength.coerceIn(512, modelMaxCtx)` |
 | `unloadModel()` | `nativeFreeModel` + сброс состояния | `LocalLlmNative.nativeFreeModel(handle)` |
 | `loadMmproj(path)` | Привязка проектора к загруженной модели | `LocalLlmNative.nativeLoadMmproj(handle, path)` |
 | `setModelMmproj(path, mmproj)` | Персистентная привязка проектора | `it.copy(mmprojPath = mmprojPath)` |
@@ -202,6 +203,7 @@
 | `ModelCard(...)` | Карточка модели + статус проектора | `val projectorName = model.mmprojPath?.let { File(it).name }` |
 | `DownloadModelDialog` / `SearchModelsDialog` / `ProjectorDownloadDialog` | Диалоги URL/поиска/проектора | `viewModel.downloadModelFromUrl(url, name)` |
 | `SettingsScreen(...)` | Настройки (темп., языки, тема, layout) | `viewModel.updateSettings(currentSettings)` |
+| Поле ctx size | Числовой ввод 512..131072; эффективное значение ограничивается моделью | `currentSettings.copy(contextLength = v.coerceIn(512, 131072))` |
 | `DropdownSelector/SliderSetting/SwitchSetting/SectionTitle` | Виджеты настроек | `var expanded by remember { mutableStateOf(false) }` |
 | `DrawerContent(...)` | Ящик: новый чат, модели, настройки, история | `Text(l("models"), style = MaterialTheme.typography.bodyLarge)` |
 | `MarkdownText(...)` / `parseMarkdown` / `parseInline` | Лёгкий markdown-рендер | `val annotated = parseMarkdown(text, textColor)` |
@@ -276,6 +278,7 @@
 | 34 | Умный автоскролл (за концом, к началу после чипов) | ✅ готово | `LaunchedEffect` в `ChatScreen` |
 | 35 | Футер ответа: copy, полный timestamp, время генерации, скорость токенов | ✅ проверено | «2026-10-05 06:25:39 · 0:33 · 1.3 t/s» |
 | 36 | Код-блоки markdown с подсветкой синтаксиса и copy у блока | ✅ готово | `MarkdownMessage.kt` |
+| 37 | Настройка ctx size для всех моделей (512..131072, ограничение по максимуму модели) | ✅ проверено | `coerceIn(512, modelMaxCtx)`, в шапке «· 8192 ctx» |
 
 ---
 

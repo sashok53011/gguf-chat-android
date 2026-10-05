@@ -130,6 +130,7 @@ Data flow: UI → `ChatViewModel` → `LlmEngine.generate/generateVision` → JN
 | `importModel(uri)` | Copy GGUF into `files/models` with progress | `context.contentResolver.openInputStream(uri)` |
 | `downloadModelFromUrl(url)` | Download with size/validity checks | `if (totalBytes > 0 && totalRead != totalBytes)` |
 | `loadModel(model, mmproj)` | Load model, RAM gate, bind vision projector | `val isVision = ModelCompatibility.isVisionArch(arch)` |
+| Effective context length | Requested ctx is clamped to the model's max and applied at load | `val effectiveCtx = s.contextLength.coerceIn(512, modelMaxCtx)` |
 | `unloadModel()` | `nativeFreeModel` + reset state | `LocalLlmNative.nativeFreeModel(handle)` |
 | `loadMmproj(path)` | Bind a projector to the loaded model | `LocalLlmNative.nativeLoadMmproj(handle, path)` |
 | `setModelMmproj(path, mmproj)` | Persist projector binding | `it.copy(mmprojPath = mmprojPath)` |
@@ -202,6 +203,7 @@ Data flow: UI → `ChatViewModel` → `LlmEngine.generate/generateVision` → JN
 | `ModelCard(...)` | Model card + projector status | `val projectorName = model.mmprojPath?.let { File(it).name }` |
 | `DownloadModelDialog` / `SearchModelsDialog` / `ProjectorDownloadDialog` | URL/search/projector dialogs | `viewModel.downloadModelFromUrl(url, name)` |
 | `SettingsScreen(...)` | Settings (temp, languages, theme, layout) | `viewModel.updateSettings(currentSettings)` |
+| Context size field | Numeric input 512..131072; the effective value is clamped to the loaded model | `currentSettings.copy(contextLength = v.coerceIn(512, 131072))` |
 | `DropdownSelector/SliderSetting/SwitchSetting/SectionTitle` | Settings widgets | `var expanded by remember { mutableStateOf(false) }` |
 | `DrawerContent(...)` | Drawer: new chat, models, settings, history | `Text(l("models"), style = MaterialTheme.typography.bodyLarge)` |
 | `MarkdownText(...)` / `parseMarkdown` / `parseInline` | Lightweight markdown rendering | `val annotated = parseMarkdown(text, textColor)` |
@@ -276,3 +278,4 @@ Sampler (`make_sampler`): `llama_sampler_init_penalties(...)` → `llama_sampler
 | 34 | Smart chat auto-scroll (follow end, jump to start after chips) | ✅ done | `ChatScreen` LaunchedEffects |
 | 35 | Answer footer: copy, full timestamp, generation time, token speed | ✅ verified | footer "2026-10-05 06:25:39 · 0:33 · 1.3 t/s" |
 | 36 | Markdown code blocks with syntax highlighting + per-block copy | ✅ done | `MarkdownMessage.kt` |
+| 37 | Configurable context size for all models (512..131072, clamped to the model's max) | ✅ verified | `coerceIn(512, modelMaxCtx)`, header shows "· 8192 ctx" |
