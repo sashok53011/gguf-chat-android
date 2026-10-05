@@ -193,11 +193,52 @@ fun ChatScreen(
 
     val listState = rememberLazyListState()
 
-    // Auto-scroll to bottom
-    LaunchedEffect(messages.size, streamingText) {
-        if (messages.isNotEmpty() || streamingText.isNotEmpty()) {
-            listState.animateScrollToItem(maxOf(messages.size - 1, 0))
+    // Auto-scroll rules:
+    //  * while the answer is streaming        -> keep the END of the growing bubble in view;
+    //  * after the suggestion chips are ready -> jump to the START of that answer;
+    //  * afterwards the user scrolls freely   (no further auto-scroll).
+    var wasStreaming by remember { mutableStateOf(false) }
+    var awaitSuggestions by remember { mutableStateOf(false) }
+    LaunchedEffect(streamingText, messages.size) {
+        val streaming = streamingText.isNotEmpty()
+        when {
+            streaming -> {
+                // The streaming bubble is the last item (index == messages.size). Snap it
+                // into view, then align its bottom with the viewport bottom so the newest
+                // tokens stay visible even when the answer is taller than the screen.
+                val index = messages.size
+                listState.scrollToItem(index)
+                val info = listState.layoutInfo.visibleItemsInfo.firstOrNull { it.index == index }
+                if (info != null) {
+                    val overflow = (info.offset + info.size) - listState.layoutInfo.viewportEndOffset
+                    if (overflow > 0) listState.scrollToItem(index, overflow)
+                }
+            }
+            wasStreaming && messages.isNotEmpty() -> {
+                // The answer finished. Do NOT jump to its start yet: wait until the
+                // suggestion chips are generated so the layout is stable first.
+                awaitSuggestions = true
+            }
+            messages.isNotEmpty() -> {
+                // A new message (e.g. the user's) was appended while idle.
+                listState.scrollToItem(messages.size - 1)
+            }
         }
+        wasStreaming = streaming
+    }
+
+    // Once the suggestions are generated (or generation is skipped), show the
+    // answer from its beginning; after that the user scrolls freely.
+    LaunchedEffect(isGeneratingSuggestions, awaitSuggestions) {
+        if (awaitSuggestions && !isGeneratingSuggestions) {
+            if (messages.isNotEmpty()) listState.animateScrollToItem(messages.size - 1)
+            awaitSuggestions = false
+        }
+    }
+
+    // Opening a session: start at the latest message.
+    LaunchedEffect(currentSessionId) {
+        if (messages.isNotEmpty()) listState.scrollToItem(messages.size - 1)
     }
 
     // Suggestion chips — shared by both layouts

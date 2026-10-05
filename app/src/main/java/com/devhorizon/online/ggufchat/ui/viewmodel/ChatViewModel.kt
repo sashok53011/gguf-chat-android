@@ -106,6 +106,17 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
     private fun l(key: String): String =
         com.devhorizon.online.ggufchat.ui.theme.Localization.getString(key, llmEngine.settings.value.appLanguage)
 
+    /** Index of the last sentence/clause delimiter in [sb], or -1 if none. */
+    private fun lastTtsDelimiter(sb: CharSequence): Int {
+        for (i in sb.length - 1 downTo 0) {
+            when (sb[i]) {
+                '.', '!', '?', ';', ':', ',', '…', '\n',
+                '。', '！', '？', '，', '；', '：' -> return i
+            }
+        }
+        return -1
+    }
+
     init {
         _appLanguage.value = llmEngine.settings.value.appLanguage
         _appTheme.value = llmEngine.settings.value.appTheme
@@ -451,6 +462,15 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                 val messages = session.messages + userMessage
                 val fullResponse = StringBuilder()
                 var firstToken = false
+                // Streaming TTS: speak each clause as soon as a punctuation mark arrives.
+                val ttsOn = llmEngine.settings.value.ttsEnabled
+                val ttsBuffer = StringBuilder()
+                var ttsStarted = false
+                val enqueueTts: (String, Boolean) -> Unit = { chunk, flush ->
+                    if (chunk.isNotBlank()) {
+                        viewModelScope.launch { ttsManager.speakChunk(chunk, flush) }
+                    }
+                }
                 val onTok: (String) -> Unit = { token ->
                     if (!firstToken) {
                         firstToken = true
@@ -458,6 +478,18 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                     }
                     fullResponse.append(token)
                     _streamingText.value = fullResponse.toString()
+                    if (ttsOn && !stopRequested) {
+                        ttsBuffer.append(token)
+                        val cut = lastTtsDelimiter(ttsBuffer)
+                        if (cut >= 0) {
+                            val chunk = ttsBuffer.substring(0, cut + 1)
+                            ttsBuffer.delete(0, cut + 1)
+                            if (chunk.isNotBlank()) {
+                                enqueueTts(chunk, !ttsStarted)
+                                ttsStarted = true
+                            }
+                        }
+                    }
                 }
 
                 val response = if (useVision) {
@@ -496,9 +528,10 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                         generateSuggestions()
                     }
 
-                    // TTS
-                    if (llmEngine.settings.value.ttsEnabled && response.isNotEmpty()) {
-                        ttsManager.speak(response)
+                    // TTS: speak whatever is left after the last delimiter.
+                    if (ttsOn && ttsBuffer.isNotBlank()) {
+                        enqueueTts(ttsBuffer.toString(), !ttsStarted)
+                        ttsStarted = true
                     }
                 }
             } catch (e: Exception) {

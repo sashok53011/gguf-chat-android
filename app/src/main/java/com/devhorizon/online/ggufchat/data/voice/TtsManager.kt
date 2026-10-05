@@ -68,7 +68,15 @@ class TtsManager(private val context: Context) {
         tts?.setSpeechRate(rate)
     }
 
-    fun speak(text: String) {
+    private var utteranceSeq = 0
+
+    fun speak(text: String) = speakChunk(text, flush = true)
+
+    /**
+     * Speaks [text]. With [flush] = true the queue is cleared first (start of a new
+     * answer); otherwise the chunk is appended so streaming speech plays continuously.
+     */
+    fun speakChunk(text: String, flush: Boolean) {
         if (!isInitialized) {
             pendingText = text
             return
@@ -81,7 +89,8 @@ class TtsManager(private val context: Context) {
 
         if (cleaned.isEmpty()) return
 
-        tts?.speak(cleaned, TextToSpeech.QUEUE_FLUSH, null, "gguf_tts_${System.currentTimeMillis()}")
+        val mode = if (flush) TextToSpeech.QUEUE_FLUSH else TextToSpeech.QUEUE_ADD
+        tts?.speak(cleaned, mode, null, "gguf_tts_${System.currentTimeMillis()}_${utteranceSeq++}")
     }
 
     fun stop() {
