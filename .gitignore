@@ -1,0 +1,29 @@
+# Android / Gradle
+.gradle/
+.kotlin/
+build/
+app/build/
+app/.cxx/
+.cxx/
+.cxx/
+local.properties
+
+# IDE / OS
+.idea/
+*.iml
+.vscode/
+.DS_Store
+Thumbs.db
+
+# Build outputs
+*.apk
+*.aab
+*.ap_
+*.dex
+*.class
+
+# Logs
+*.log
+
+# Legacy, unused vendored tree: the build uses app/src/main/cpp/llama.cpp-new
+/app/src/main/cpp/llama.cpp/
