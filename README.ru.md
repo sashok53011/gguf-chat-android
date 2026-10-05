@@ -2,6 +2,8 @@
 
 **RU** [Русский](README.ru.md) · **EN** [English](README.md) · **DE** [Deutsch](README.de.md)
 
+🔎 **Живая карта кода:** [sashok53011.github.io/gguf-chat-android](https://sashok53011.github.io/gguf-chat-android/) — интерактивная таблица на 3 колонки (наименование · технология · конкретные строки кода), со сворачиванием, RU/EN/DE.
+
 ---
 
 ## 1. Что это

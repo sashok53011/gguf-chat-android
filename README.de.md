@@ -2,6 +2,8 @@
 
 **RU** [Русский](README.ru.md) · **EN** [English](README.md) · **DE** [Deutsch](README.de.md)
 
+🔎 **Live-Code-Karte:** [sashok53011.github.io/gguf-chat-android](https://sashok53011.github.io/gguf-chat-android/) — interaktive 3-Spalten-Karte des handgeschriebenen Codes (Name · Technologie · konkrete Codezeilen), aufklappbar, RU/EN/DE.
+
 ---
 
 ## 1. Überblick
