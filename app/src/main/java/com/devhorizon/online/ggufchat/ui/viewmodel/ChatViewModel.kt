@@ -462,6 +462,8 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                 val messages = session.messages + userMessage
                 val fullResponse = StringBuilder()
                 var firstToken = false
+                var streamedTokens = 0
+                val genStart = System.currentTimeMillis()
                 // Streaming TTS: speak each clause as soon as a punctuation mark arrives.
                 val ttsOn = llmEngine.settings.value.ttsEnabled
                 val ttsBuffer = StringBuilder()
@@ -477,6 +479,7 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                         _isPreparingVision.value = false
                     }
                     fullResponse.append(token)
+                    streamedTokens++
                     _streamingText.value = fullResponse.toString()
                     if (ttsOn && !stopRequested) {
                         ttsBuffer.append(token)
@@ -515,7 +518,12 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
                 if (response.isNotEmpty()) {
                     chatRepository.addMessage(
                         sessionId,
-                        ChatMessage(role = "assistant", content = response)
+                        ChatMessage(
+                            role = "assistant",
+                            content = response,
+                            generationMs = (System.currentTimeMillis() - genStart).coerceAtLeast(0L),
+                            tokenCount = streamedTokens
+                        )
                     )
                 }
 

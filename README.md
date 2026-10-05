@@ -191,6 +191,8 @@ Data flow: UI → `ChatViewModel` → `LlmEngine.generate/generateVision` → JN
 |---|---|---|
 | `ChatScreen(...)` | Chat: RAM header, message list, input, chips | `val ramFree by viewModel.ramFree.collectAsState()` |
 | Chat auto-scroll | Follows the streaming answer's END, then jumps to the answer's START once the suggestion chips are ready | `listState.scrollToItem(index, overflow)` |
+| `AnswerFooter(message)` | Under each answer: copy-to-clipboard, full timestamp (date/time/secs), generation time (mm:ss), token speed (t/s); stats come from `ChatMessage.generationMs`/`tokenCount` | `clipboard.setText(AnnotatedString(message.content))` |
+| `MarkdownMessage(text)` / `CodeBlock` | Fenced code blocks with a language label, syntax highlighting and a per-block copy button | `FENCE.findAll(text)` |
 | `takePhoto()` | Capture via `FileProvider` | `FileProvider.getUriForFile(appContext, "${appContext.packageName}.fileprovider", file)` |
 | `sendCurrent()` | Send + hide keyboard | `viewModel.sendMessage()` |
 | `MessageBubble(...)` | Message bubble (+image) | `val isUser = message.role == "user"` |
@@ -272,3 +274,5 @@ Sampler (`make_sampler`): `llama_sampler_init_penalties(...)` → `llama_sampler
 | 32 | Unit/UI tests and CI | ⏳ pending | none |
 | 33 | Streaming TTS (speak each clause as tokens arrive) | ✅ verified | 8 synthesis requests during one answer |
 | 34 | Smart chat auto-scroll (follow end, jump to start after chips) | ✅ done | `ChatScreen` LaunchedEffects |
+| 35 | Answer footer: copy, full timestamp, generation time, token speed | ✅ verified | footer "2026-10-05 06:25:39 · 0:33 · 1.3 t/s" |
+| 36 | Markdown code blocks with syntax highlighting + per-block copy | ✅ done | `MarkdownMessage.kt` |

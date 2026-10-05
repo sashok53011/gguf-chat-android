@@ -59,7 +59,9 @@ class ChatRepository(private val context: Context) {
                     role = m.getString("role"),
                     content = m.getString("content"),
                     timestamp = m.optLong("timestamp", System.currentTimeMillis()),
-                    imagePath = m.optString("imagePath", "").ifBlank { null }
+                    imagePath = m.optString("imagePath", "").ifBlank { null },
+                    generationMs = m.optLong("generationMs", 0L),
+                    tokenCount = m.optInt("tokenCount", 0)
                 )
             )
         }
@@ -107,6 +109,8 @@ class ChatRepository(private val context: Context) {
                 mo.put("content", m.content)
                 mo.put("timestamp", m.timestamp)
                 if (!m.imagePath.isNullOrBlank()) mo.put("imagePath", m.imagePath)
+                if (m.generationMs > 0) mo.put("generationMs", m.generationMs)
+                if (m.tokenCount > 0) mo.put("tokenCount", m.tokenCount)
                 arr.put(mo)
             }
             o.put("messages", arr)

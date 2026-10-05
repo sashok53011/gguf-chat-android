@@ -191,6 +191,8 @@
 |---|---|---|
 | `ChatScreen(...)` | Чат: шапка с ОЗУ, список сообщений, ввод, чипы | `val ramFree by viewModel.ramFree.collectAsState()` |
 | Автоскролл чата | Во время стрима держит конец ответа, после готовности чипов прыгает к началу ответа | `listState.scrollToItem(index, overflow)` |
+| `AnswerFooter(message)` | Под каждым ответом: copy в буфер, полный timestamp (дата/время/секунды), время генерации (мм:сс), скорость (t/s); статистика из `ChatMessage.generationMs`/`tokenCount` | `clipboard.setText(AnnotatedString(message.content))` |
+| `MarkdownMessage(text)` / `CodeBlock` | Код-блоки с подписью языка, подсветкой синтаксиса и кнопкой copy у блока | `FENCE.findAll(text)` |
 | `takePhoto()` | Съёмка через `FileProvider` | `FileProvider.getUriForFile(appContext, "${appContext.packageName}.fileprovider", file)` |
 | `sendCurrent()` | Отправка + скрытие клавиатуры | `viewModel.sendMessage()` |
 | `MessageBubble(...)` | Пузырь сообщения (+картинка) | `val isUser = message.role == "user"` |
@@ -272,6 +274,8 @@
 | 32 | Unit/UI-тесты и CI | ⏳ не сделано | тестов нет |
 | 33 | Потоковый TTS (озвучка фрагментов по мере генерации) | ✅ проверено | 8 запросов синтеза за один ответ |
 | 34 | Умный автоскролл (за концом, к началу после чипов) | ✅ готово | `LaunchedEffect` в `ChatScreen` |
+| 35 | Футер ответа: copy, полный timestamp, время генерации, скорость токенов | ✅ проверено | «2026-10-05 06:25:39 · 0:33 · 1.3 t/s» |
+| 36 | Код-блоки markdown с подсветкой синтаксиса и copy у блока | ✅ готово | `MarkdownMessage.kt` |
 
 ---
 

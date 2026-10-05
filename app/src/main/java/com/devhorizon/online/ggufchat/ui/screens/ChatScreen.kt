@@ -40,7 +40,9 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.AddAPhoto
 import androidx.compose.material.icons.filled.AttachFile
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.ContentCopy
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Description
 import androidx.compose.material.icons.filled.Image
@@ -76,6 +78,7 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -83,9 +86,11 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.platform.LocalFocusManager
 import androidx.compose.ui.platform.LocalSoftwareKeyboardController
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
@@ -93,11 +98,17 @@ import androidx.compose.ui.unit.dp
 import com.devhorizon.online.ggufchat.data.model.ChatMessage
 import com.devhorizon.online.ggufchat.data.model.ModelState
 import com.devhorizon.online.ggufchat.data.chat.DocumentReader
+import com.devhorizon.online.ggufchat.ui.components.MarkdownMessage
 import com.devhorizon.online.ggufchat.ui.components.MarkdownText
 import com.devhorizon.online.ggufchat.ui.theme.AssistantBubble
 import com.devhorizon.online.ggufchat.ui.theme.UserBubble
 import com.devhorizon.online.ggufchat.ui.theme.UserBubbleText
 import com.devhorizon.online.ggufchat.ui.theme.AssistantBubbleText
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import com.devhorizon.online.ggufchat.ui.theme.Localization
 import com.devhorizon.online.ggufchat.ui.viewmodel.ChatViewModel
 import androidx.core.content.FileProvider
@@ -887,14 +898,80 @@ private fun MessageBubble(
                         )
                     }
                 }
-                MarkdownText(
+                MarkdownMessage(
                     text = message.content,
                     textColor = textColor,
+                    l = l,
                     modifier = Modifier.padding(horizontal = 12.dp, vertical = 8.dp)
                 )
+                if (!isUser && !isStreaming) {
+                    AnswerFooter(message = message, l = l)
+                }
             }
         }
     }
+}
+
+/**
+ * Footer shown at the end of every assistant answer: copy-to-clipboard, full
+ * timestamp (date, time, seconds), generation time (mm:ss) and token speed.
+ */
+@Composable
+private fun AnswerFooter(message: ChatMessage, l: (String) -> String) {
+    val clipboard = LocalClipboardManager.current
+    val scope = rememberCoroutineScope()
+    var copied by remember { mutableStateOf(false) }
+    val fmt = remember { SimpleDateFormat("yyyy-MM-dd HH:mm:ss", Locale.getDefault()) }
+    val timeText = remember(message.timestamp) { fmt.format(Date(message.timestamp)) }
+    val durationText = if (message.generationMs > 0) formatDuration(message.generationMs) else null
+    val speedText = if (message.generationMs > 0 && message.tokenCount > 0) {
+        String.format(Locale.US, "%.1f t/s", message.tokenCount * 1000.0 / message.generationMs)
+    } else null
+
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = 6.dp, end = 6.dp, bottom = 4.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        IconButton(
+            onClick = {
+                clipboard.setText(AnnotatedString(message.content))
+                copied = true
+                scope.launch {
+                    delay(1500)
+                    copied = false
+                }
+            },
+            modifier = Modifier.size(28.dp)
+        ) {
+            Icon(
+                imageVector = if (copied) Icons.Default.Check else Icons.Default.ContentCopy,
+                contentDescription = if (copied) l("copied") else l("copy"),
+                tint = if (copied) Color(0xFF7FD4C1) else AssistantFooterText,
+                modifier = Modifier.size(14.dp)
+            )
+        }
+        Spacer(modifier = Modifier.width(4.dp))
+        Text(
+            text = buildString {
+                append(timeText)
+                if (durationText != null) append(" · ").append(durationText)
+                if (speedText != null) append(" · ").append(speedText)
+            },
+            style = MaterialTheme.typography.labelSmall,
+            color = AssistantFooterText,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis
+        )
+    }
+}
+
+private val AssistantFooterText = Color(0xFFB8B8B8)
+
+private fun formatDuration(ms: Long): String {
+    val totalSec = (ms / 1000).coerceAtLeast(1)
+    return String.format(Locale.US, "%d:%02d", totalSec / 60, totalSec % 60)
 }
 
 

@@ -8,7 +8,10 @@ data class ChatMessage(
     val content: String,
     val timestamp: Long = System.currentTimeMillis(),
     // Optional image shown with this message (local file path)
-    val imagePath: String? = null
+    val imagePath: String? = null,
+    // Generation stats for assistant replies (0 for user messages / unknown)
+    val generationMs: Long = 0L,
+    val tokenCount: Int = 0
 )
 
 @Serializable

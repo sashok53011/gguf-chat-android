@@ -191,6 +191,8 @@ Datenfluss: UI → `ChatViewModel` → `LlmEngine.generate/generateVision` → J
 |---|---|---|
 | `ChatScreen(...)` | Chat: RAM-Leiste, Nachrichtenliste, Eingabe, Chips | `val ramFree by viewModel.ramFree.collectAsState()` |
 | Chat-Auto-Scroll | Folgt dem Ende der Streaming-Antwort, springt nach den Chips an den Anfang | `listState.scrollToItem(index, overflow)` |
+| `AnswerFooter(message)` | Unter jeder Antwort: Kopieren, voller Zeitstempel (Datum/Zeit/Sek.), Generierzeit (mm:ss), Token-Tempo (t/s); Daten aus `ChatMessage.generationMs`/`tokenCount` | `clipboard.setText(AnnotatedString(message.content))` |
+| `MarkdownMessage(text)` / `CodeBlock` | Codeblöcke mit Sprachlabel, Syntax-Highlighting und Copy-Button je Block | `FENCE.findAll(text)` |
 | `takePhoto()` | Aufnahme über `FileProvider` | `FileProvider.getUriForFile(appContext, "${appContext.packageName}.fileprovider", file)` |
 | `sendCurrent()` | Senden + Tastatur verbergen | `viewModel.sendMessage()` |
 | `MessageBubble(...)` | Nachrichtenblase (+Bild) | `val isUser = message.role == "user"` |
@@ -272,3 +274,5 @@ Sampler (`make_sampler`): `llama_sampler_init_penalties(...)` → `llama_sampler
 | 32 | Unit-/UI-Tests und CI | ⏳ offen | keine |
 | 33 | Streaming-TTS (jede Klausel bei Token-Eingang) | ✅ geprüft | 8 Synthese-Anfragen pro Antwort |
 | 34 | Intelligenter Chat-Auto-Scroll (Ende folgen, nach Chips zum Anfang) | ✅ fertig | `ChatScreen`-LaunchedEffects |
+| 35 | Antwort-Fußzeile: Kopieren, voller Zeitstempel, Generierzeit, Token-Tempo | ✅ geprüft | „2026-10-05 06:25:39 · 0:33 · 1.3 t/s“ |
+| 36 | Markdown-Codeblöcke mit Syntax-Highlighting + Kopieren je Block | ✅ fertig | `MarkdownMessage.kt` |
