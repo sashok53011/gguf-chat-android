@@ -204,6 +204,7 @@ Data flow: UI → `ChatViewModel` → `LlmEngine.generate/generateVision` → JN
 | `DownloadModelDialog` / `SearchModelsDialog` / `ProjectorDownloadDialog` | URL/search/projector dialogs | `viewModel.downloadModelFromUrl(url, name)` |
 | `SettingsScreen(...)` | Settings (temp, languages, theme, layout) | `viewModel.updateSettings(currentSettings)` |
 | Context size field | Numeric input 512..131072; the effective value is clamped to the loaded model | `currentSettings.copy(contextLength = v.coerceIn(512, 131072))` |
+| Quick downloads dialog | One-tap preset downloads: Gemma 4 E2B + Q8 mmproj and Qwen2-VL 2B + Q8 mmproj | `QUICK_DOWNLOADS` + `viewModel.downloadModelFromUrl(url, fileName)` |
 | `DropdownSelector/SliderSetting/SwitchSetting/SectionTitle` | Settings widgets | `var expanded by remember { mutableStateOf(false) }` |
 | `DrawerContent(...)` | Drawer: new chat, models, settings, history | `Text(l("models"), style = MaterialTheme.typography.bodyLarge)` |
 | `MarkdownText(...)` / `parseMarkdown` / `parseInline` | Lightweight markdown rendering | `val annotated = parseMarkdown(text, textColor)` |
@@ -279,3 +280,4 @@ Sampler (`make_sampler`): `llama_sampler_init_penalties(...)` → `llama_sampler
 | 35 | Answer footer: copy, full timestamp, generation time, token speed | ✅ verified | footer "2026-10-05 06:25:39 · 0:33 · 1.3 t/s" |
 | 36 | Markdown code blocks with syntax highlighting + per-block copy | ✅ done | `MarkdownMessage.kt` |
 | 37 | Configurable context size for all models (512..131072, clamped to the model's max) | ✅ verified | `coerceIn(512, modelMaxCtx)`, header shows "· 8192 ctx" |
+| 38 | One-tap preset downloads (Gemma 4 E2B, Qwen2-VL 2B + Q8 mmproj) | ✅ built | device verification pending |

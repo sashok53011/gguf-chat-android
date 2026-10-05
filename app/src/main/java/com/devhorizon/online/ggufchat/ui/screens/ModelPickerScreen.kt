@@ -20,6 +20,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material.icons.filled.Close
+import androidx.compose.material.icons.filled.CloudDownload
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Download
 import androidx.compose.material.icons.filled.Eject
@@ -82,6 +83,7 @@ fun ModelPickerScreen(
     var modelToDelete by remember { mutableStateOf<ModelInfo?>(null) }
     var showDownloadDialog by remember { mutableStateOf(false) }
     var showSearchDialog by remember { mutableStateOf(false) }
+    var showQuickDialog by remember { mutableStateOf(false) }
 
     val isDownloading by viewModel.llmEngine.isDownloading.collectAsState()
     val downloadProgress by viewModel.llmEngine.downloadProgress.collectAsState()
@@ -136,6 +138,9 @@ fun ModelPickerScreen(
                     }
                 },
                 actions = {
+                    IconButton(onClick = { showQuickDialog = true }) {
+                        Icon(Icons.Default.CloudDownload, contentDescription = l("quick_downloads"))
+                    }
                     IconButton(onClick = { showSearchDialog = true }) {
                         Icon(Icons.Default.Search, contentDescription = l("search_models"))
                     }
@@ -302,6 +307,19 @@ fun ModelPickerScreen(
             },
             onCancel = { viewModel.cancelModelDownload() },
             onDismiss = { if (!isDownloading) showDownloadDialog = false }
+        )
+    }
+
+    // Quick downloads: preset models + their Q8 projectors
+    if (showQuickDialog) {
+        QuickDownloadDialog(
+            l = l,
+            isDownloading = isDownloading,
+            progress = downloadProgress,
+            message = downloadMessage,
+            onDownload = { fileName, url -> viewModel.downloadModelFromUrl(url, fileName) },
+            onCancel = { viewModel.cancelModelDownload() },
+            onDismiss = { if (!isDownloading) showQuickDialog = false }
         )
     }
 
@@ -891,4 +909,97 @@ private fun formatSize(bytes: Long): String {
         bytes >= 1024 -> "%.1f KB".format(bytes / 1024.0)
         else -> "$bytes B"
     }
+}
+
+/** One-tap downloads: the two tested vision models and their Q8 projectors. */
+private data class QuickDownload(
+    val label: String,
+    val fileName: String,
+    val url: String,
+    val note: String
+)
+
+private val QUICK_DOWNLOADS = listOf(
+    QuickDownload(
+        label = "Gemma 4 E2B (Q4_K_M)",
+        fileName = "gemma-4-E2B-it-Q4_K_M.gguf",
+        url = "https://huggingface.co/unsloth/gemma-4-E2B-it-GGUF/resolve/main/gemma-4-E2B-it-Q4_K_M.gguf",
+        note = "~3.0 GB - model"
+    ),
+    QuickDownload(
+        label = "Gemma 4 E2B - mmproj Q8",
+        fileName = "mmproj-gemma-4-E2B-it-Q8_0.gguf",
+        url = "https://huggingface.co/prithivMLmods/gemma-4-E2B-it-F32-GGUF/resolve/main/GGUF/gemma-4-E2B-it.mmproj-q8_0.gguf",
+        note = "~0.5 GB - vision projector"
+    ),
+    QuickDownload(
+        label = "Qwen2-VL 2B (Q4_K_M)",
+        fileName = "Qwen2-VL-2B-Instruct-Q4_K_M.gguf",
+        url = "https://huggingface.co/ggml-org/Qwen2-VL-2B-Instruct-GGUF/resolve/main/Qwen2-VL-2B-Instruct-Q4_K_M.gguf",
+        note = "~0.9 GB - model"
+    ),
+    QuickDownload(
+        label = "Qwen2-VL 2B - mmproj Q8",
+        fileName = "mmproj-Qwen2-VL-2B-Instruct-Q8_0.gguf",
+        url = "https://huggingface.co/ggml-org/Qwen2-VL-2B-Instruct-GGUF/resolve/main/mmproj-Qwen2-VL-2B-Instruct-Q8_0.gguf",
+        note = "~0.7 GB - vision projector"
+    )
+)
+
+@Composable
+private fun QuickDownloadDialog(
+    l: (String) -> String,
+    isDownloading: Boolean,
+    progress: Float,
+    message: String,
+    onDownload: (fileName: String, url: String) -> Unit,
+    onCancel: () -> Unit,
+    onDismiss: () -> Unit
+) {
+    AlertDialog(
+        onDismissRequest = { if (!isDownloading) onDismiss() },
+        title = { Text(l("quick_downloads")) },
+        text = {
+            Column {
+                QUICK_DOWNLOADS.forEach { item ->
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(item.label, style = MaterialTheme.typography.bodyMedium)
+                            Text(
+                                item.note,
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+                        TextButton(
+                            onClick = { onDownload(item.fileName, item.url) },
+                            enabled = !isDownloading
+                        ) {
+                            Text(l("download"))
+                        }
+                    }
+                }
+                if (isDownloading) {
+                    Spacer(modifier = Modifier.height(8.dp))
+                    LinearProgressIndicator(progress = { progress }, modifier = Modifier.fillMaxWidth())
+                    Spacer(modifier = Modifier.height(4.dp))
+                    Text(
+                        message,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        },
+        confirmButton = {
+            if (isDownloading) {
+                TextButton(onClick = onCancel) { Text(l("cancel")) }
+            } else {
+                TextButton(onClick = onDismiss) { Text(l("close")) }
+            }
+        }
+    )
 }

@@ -204,6 +204,7 @@
 | `DownloadModelDialog` / `SearchModelsDialog` / `ProjectorDownloadDialog` | Диалоги URL/поиска/проектора | `viewModel.downloadModelFromUrl(url, name)` |
 | `SettingsScreen(...)` | Настройки (темп., языки, тема, layout) | `viewModel.updateSettings(currentSettings)` |
 | Поле ctx size | Числовой ввод 512..131072; эффективное значение ограничивается моделью | `currentSettings.copy(contextLength = v.coerceIn(512, 131072))` |
+| Диалог быстрых загрузок | Загрузка в один тап: Gemma 4 E2B + mmproj Q8 и Qwen2-VL 2B + mmproj Q8 | `QUICK_DOWNLOADS` + `viewModel.downloadModelFromUrl(url, fileName)` |
 | `DropdownSelector/SliderSetting/SwitchSetting/SectionTitle` | Виджеты настроек | `var expanded by remember { mutableStateOf(false) }` |
 | `DrawerContent(...)` | Ящик: новый чат, модели, настройки, история | `Text(l("models"), style = MaterialTheme.typography.bodyLarge)` |
 | `MarkdownText(...)` / `parseMarkdown` / `parseInline` | Лёгкий markdown-рендер | `val annotated = parseMarkdown(text, textColor)` |
@@ -279,6 +280,7 @@
 | 35 | Футер ответа: copy, полный timestamp, время генерации, скорость токенов | ✅ проверено | «2026-10-05 06:25:39 · 0:33 · 1.3 t/s» |
 | 36 | Код-блоки markdown с подсветкой синтаксиса и copy у блока | ✅ готово | `MarkdownMessage.kt` |
 | 37 | Настройка ctx size для всех моделей (512..131072, ограничение по максимуму модели) | ✅ проверено | `coerceIn(512, modelMaxCtx)`, в шапке «· 8192 ctx» |
+| 38 | Загрузка пресетов в один тап (Gemma 4 E2B, Qwen2-VL 2B + mmproj Q8) | ✅ собрано | проверка на устройстве ожидает |
 
 ---
 

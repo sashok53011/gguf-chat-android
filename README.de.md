@@ -204,6 +204,7 @@ Datenfluss: UI → `ChatViewModel` → `LlmEngine.generate/generateVision` → J
 | `DownloadModelDialog` / `SearchModelsDialog` / `ProjectorDownloadDialog` | URL-/Such-/Projektor-Dialoge | `viewModel.downloadModelFromUrl(url, name)` |
 | `SettingsScreen(...)` | Einstellungen (Temp., Sprachen, Theme, Layout) | `viewModel.updateSettings(currentSettings)` |
 | Kontextgröße-Feld | Zahleneingabe 512..131072; effektiver Wert auf das Modell begrenzt | `currentSettings.copy(contextLength = v.coerceIn(512, 131072))` |
+| Schnelldownload-Dialog | Ein-Tap-Downloads: Gemma 4 E2B + Q8-mmproj und Qwen2-VL 2B + Q8-mmproj | `QUICK_DOWNLOADS` + `viewModel.downloadModelFromUrl(url, fileName)` |
 | `DropdownSelector/SliderSetting/SwitchSetting/SectionTitle` | Einstellungs-Widgets | `var expanded by remember { mutableStateOf(false) }` |
 | `DrawerContent(...)` | Drawer: neuer Chat, Modelle, Einstellungen, Verlauf | `Text(l("models"), style = MaterialTheme.typography.bodyLarge)` |
 | `MarkdownText(...)` / `parseMarkdown` / `parseInline` | Leichtes Markdown-Rendering | `val annotated = parseMarkdown(text, textColor)` |
@@ -279,3 +280,4 @@ Sampler (`make_sampler`): `llama_sampler_init_penalties(...)` → `llama_sampler
 | 35 | Antwort-Fußzeile: Kopieren, voller Zeitstempel, Generierzeit, Token-Tempo | ✅ geprüft | „2026-10-05 06:25:39 · 0:33 · 1.3 t/s“ |
 | 36 | Markdown-Codeblöcke mit Syntax-Highlighting + Kopieren je Block | ✅ fertig | `MarkdownMessage.kt` |
 | 37 | Konfigurierbare Kontextgröße für alle Modelle (512..131072, auf Modellmaximum begrenzt) | ✅ geprüft | `coerceIn(512, modelMaxCtx)`, Kopfzeile „· 8192 ctx“ |
+| 38 | Ein-Tap-Preset-Downloads (Gemma 4 E2B, Qwen2-VL 2B + Q8-mmproj) | ✅ gebaut | Geräteprüfung ausstehend |

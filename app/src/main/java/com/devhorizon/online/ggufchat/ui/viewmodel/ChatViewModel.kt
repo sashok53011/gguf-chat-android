@@ -106,9 +106,17 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
     private fun l(key: String): String =
         com.devhorizon.online.ggufchat.ui.theme.Localization.getString(key, llmEngine.settings.value.appLanguage)
 
+    /** Heuristic: a projector file and a model file share at least two name tokens. */
+    private fun projectorMatchesModel(projectorName: String, modelName: String): Boolean {
+        fun tokens(s: String) = s.lowercase()
+            .split(Regex("[^a-z0-9]+"))
+            .filter { it.length >= 3 }
+            .toSet()
+        return tokens(projectorName).intersect(tokens(modelName)).size >= 2
+    }
+
     /** Index of the last sentence/clause delimiter in [sb], or -1 if none. */
-    private fun lastTtsDelimiter(sb: CharSequence): Int {
-        for (i in sb.length - 1 downTo 0) {
+    private fun lastTtsDelimiter(sb: CharSequence): Int {        for (i in sb.length - 1 downTo 0) {
             when (sb[i]) {
                 '.', '!', '?', ';', ':', ',', '…', '\n',
                 '。', '！', '？', '，', '；', '：' -> return i
@@ -151,19 +159,25 @@ class ChatViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun downloadModelFromUrl(url: String, displayName: String? = null) {
-        // A projector (mmproj) URL is routed to projector handling and attached to
-        // the loaded model (or the first vision-capable one).
+        // A projector (mmproj) URL is routed to projector handling: attach it to the
+        // loaded model, else to the vision model whose name matches, else to the first
+        // vision model. With no vision model yet, just store the file in models/.
         val rawName = displayName ?: url.substringAfterLast('/').substringBefore('?')
         if (rawName.contains("mmproj", ignoreCase = true)) {
             _downloadError.value = null
-            val target = llmEngine.models.value.firstOrNull { llmEngine.isLoadedPath(it.path) }
-                ?: llmEngine.models.value.firstOrNull {
-                    com.devhorizon.online.ggufchat.data.llm.ModelCompatibility.isVisionArch(it.architecture)
-                }
+            val vision = llmEngine.models.value.filter {
+                com.devhorizon.online.ggufchat.data.llm.ModelCompatibility.isVisionArch(it.architecture)
+            }
+            val target = vision.firstOrNull { llmEngine.isLoadedPath(it.path) }
+                ?: vision.firstOrNull { projectorMatchesModel(rawName, it.name) }
+                ?: vision.firstOrNull()
             if (target == null) {
-                val msg = l("not_a_projector")
-                _statusText.value = msg
-                _downloadError.value = msg
+                viewModelScope.launch {
+                    _statusText.value = l("downloading_model")
+                    val r = llmEngine.downloadMmprojFromUrl(url, displayName)
+                    _statusText.value = if (r.isSuccess) l("projector_imported")
+                    else "${l("download_failed")}: ${r.exceptionOrNull()?.message}"
+                }
                 return
             }
             downloadMmprojForModel(target, url, displayName)
