@@ -620,6 +620,7 @@ class LlmEngine(private val context: Context) {
 
     /** Downloads an mmproj projector from a direct URL into the models dir. */
     suspend fun downloadMmprojFromUrl(url: String, displayName: String? = null): Result<String> = withContext(Dispatchers.IO) {
+        var tmp: File? = null
         try {
             val trimmed = url.trim()
             if (!trimmed.startsWith("http://") && !trimmed.startsWith("https://")) {
@@ -633,6 +634,10 @@ class LlmEngine(private val context: Context) {
             }
             val modelsDir = File(context.filesDir, "models").apply { mkdirs() }
             val dest = File(modelsDir, name)
+            // Download to a ".part" file and only rename on success, so a cancelled or
+            // failed download never leaves a truncated projector in the models dir.
+            val part = File(modelsDir, "$name.part")
+            tmp = part
 
             _isDownloading.value = true
             _downloadProgress.value = 0f
@@ -645,7 +650,7 @@ class LlmEngine(private val context: Context) {
                 conn.connect()
                 val total = conn.contentLengthLong
                 conn.inputStream.use { input ->
-                    dest.outputStream().use { out ->
+                    part.outputStream().use { out ->
                         val buf = ByteArray(64 * 1024)
                         var readTotal = 0L
                         var r: Int
@@ -660,11 +665,17 @@ class LlmEngine(private val context: Context) {
                     }
                 }
                 conn.disconnect()
+                if (!part.renameTo(dest)) {
+                    part.copyTo(dest, overwrite = true)
+                    part.delete()
+                }
+                tmp = null
             } finally {
                 _isDownloading.value = false
             }
             Result.success(dest.absolutePath)
         } catch (e: Exception) {
+            tmp?.delete()
             Log.e(TAG, "Failed to download mmproj", e)
             Result.failure(e)
         }
